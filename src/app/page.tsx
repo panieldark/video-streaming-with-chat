@@ -10,12 +10,17 @@ export default function Home() {
 
   const videoRef = useRef(null);
   const ivsPlayerRef = useRef<typeof IVSPlayer | null>(null);
-  const streamUrl =
-    "https://4844c5bc739b.us-west-2.playback.live-video.net/api/video/v1/us-west-2.714567495486.channel.FgXf7YVomET2.m3u8";
+  const streamUrl = process.env.NEXT_PUBLIC_STREAM_URL;
   const [playerState, setPlayerState] = useState<AwsIvsPlayerState>("Idle");
   const [latency, setLatency] = useState<number | null>(null);
   const [quality, setQuality] = useState<string | null>(null);
   const [framerate, setFramerate] = useState<string | null>(null);
+  const [username, setUsername] = useState<string | null>(null);
+  const [chatMessages, setChatMessages] = useState<
+    { username: string; content: string }[]
+  >([]);
+  const wsRef = useRef<WebSocket | null>(null);
+
   const initialize = () => {
     const ivsPlayer = IVSPlayer.create();
 
@@ -76,6 +81,40 @@ export default function Home() {
     }
   }, [playerState]);
 
+  useEffect(() => {
+    const initChat = async (username: string) => {
+      const chatAccessToken = await fetch("/api/create-token", {
+        method: "POST",
+        body: JSON.stringify({
+          username: "daniel" // TODO set once username form exists
+        })
+      }).then((res) => res.text());
+      const ws = new WebSocket(
+        "wss://edge.ivschat.us-west-2.amazonaws.com",
+        chatAccessToken
+      );
+      wsRef.current = ws;
+      ws.onopen = () => {
+        ws.send(
+          JSON.stringify({
+            action: "SEND_MESSAGE",
+            content: "*joined the chat*",
+            attributes: {
+              username: username
+            }
+          })
+        );
+      };
+      ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        console.log(data);
+      };
+    };
+    if (username) {
+      initChat(username);
+    }
+  }, [username]);
+
   const Badge = ({
     children,
     color = "bg-teal-800"
@@ -115,6 +154,12 @@ export default function Home() {
           playsInline
           className="w-full h-[90%] left-0 top-16 fixed"
         />
+        {chatMessages.map((message, i) => (
+          <div className="mb-2" key={i}>
+            <b className="text-primary">{message.username}</b>:{" "}
+            {message.content}
+          </div>
+        ))}
       </div>
     </>
   );
