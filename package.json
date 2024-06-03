@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "aws-sdk": "^2.1632.0",
+    "dotenv": "^16.4.5",
     "next": "14.2.3",
     "react": "^18",
     "react-dom": "^18",

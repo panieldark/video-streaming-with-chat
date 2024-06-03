@@ -20,6 +20,7 @@ export default function Home() {
     { username: string; content: string }[]
   >([]);
   const [textInputValue, setTextInputValue] = useState("");
+  const [overlayText, setOverlayText] = useState<string | null>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const wsRef = useRef<WebSocket | null>(null);
 
@@ -46,6 +47,13 @@ export default function Home() {
       (quality: any) => {
         setQuality(quality.name);
         setFramerate(quality.framerate);
+      }
+    );
+    ivsPlayer.addEventListener(
+      IVSPlayer.PlayerEventType.TEXT_METADATA_CUE,
+      (metadata: any) => {
+        console.log(metadata);
+        setOverlayText(metadata?.text);
       }
     );
 
@@ -211,13 +219,20 @@ export default function Home() {
             </div>
 
             <div className="grid grid-cols-[75%_25%] gap-2 items-center justify-center w-full h-[90%] left-0 top-16 fixed">
-              <video
-                ref={videoRef}
-                controls
-                autoPlay
-                playsInline
-                className="w-full"
-              />
+              <div className="relative">
+                <video
+                  ref={videoRef}
+                  controls
+                  autoPlay
+                  playsInline
+                  className="w-full"
+                />
+                {overlayText && overlayText !== " " && (
+                  <div className="absolute top-4 left-4 bg-gray-600 p-2 rounded-sm text-white z-10">
+                    {overlayText}
+                  </div>
+                )}
+              </div>
               <div
                 className="flex flex-col max-h-[80%] w-full h-full overflow-y-scroll justify-between relative"
                 ref={chatContainerRef}>
