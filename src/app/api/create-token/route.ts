@@ -20,7 +20,7 @@ const createToken = async (username: string) => {
     accessKeyId: process.env.ACCESS_KEY,
     secretAccessKey: process.env.SECRET_KEY
   });
-  const IvsChat = new AWS.Ivschat({ region: "us-east-1", credentials });
+  const IvsChat = new AWS.Ivschat({ region: "us-west-2", credentials });
   let token;
 
   const params = {
@@ -33,6 +33,7 @@ const createToken = async (username: string) => {
     sessionDurationInMinutes: 60
   };
   try {
+    // @ts-ignore
     const data = await IvsChat.createChatToken(params).promise();
     token = data.token;
   } catch (e: unknown) {

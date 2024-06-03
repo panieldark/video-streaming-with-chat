@@ -19,6 +19,8 @@ export default function Home() {
   const [chatMessages, setChatMessages] = useState<
     { username: string; content: string }[]
   >([]);
+  const [textInputValue, setTextInputValue] = useState("");
+  const chatContainerRef = useRef<HTMLDivElement>(null);
   const wsRef = useRef<WebSocket | null>(null);
 
   const initialize = () => {
@@ -86,7 +88,7 @@ export default function Home() {
       const chatAccessToken = await fetch("/api/create-token", {
         method: "POST",
         body: JSON.stringify({
-          username: "daniel" // TODO set once username form exists
+          username
         })
       }).then((res) => res.text());
       const ws = new WebSocket(
@@ -108,12 +110,39 @@ export default function Home() {
       ws.onmessage = (event) => {
         const data = JSON.parse(event.data);
         console.log(data);
+        setChatMessages((prev) => [
+          ...prev,
+          {
+            username: data?.Attributes?.username,
+            content: data?.Content
+          }
+        ]);
       };
     };
     if (username) {
       initChat(username);
     }
   }, [username]);
+
+  useEffect(() => {
+    console.log(wsRef.current);
+  }, [wsRef.current, chatMessages]);
+  const sendChatMessage = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (wsRef.current) {
+      wsRef.current.send(
+        JSON.stringify({
+          action: "SEND_MESSAGE",
+          content: textInputValue,
+          attributes: {
+            username
+          }
+        })
+      );
+    }
+    setTextInputValue("");
+    console.log(chatMessages);
+  };
 
   const Badge = ({
     children,
@@ -130,37 +159,99 @@ export default function Home() {
       {children}
     </span>
   );
+
+  useEffect(() => {
+    // Scroll to the bottom of the chat container when chatMessages change
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop =
+        chatContainerRef.current.scrollHeight - 50;
+    }
+  }, [chatMessages]);
+
   return (
     <>
-      <Script
-        src="https://player.live-video.net/1.28.0/amazon-ivs-player.min.js"
-        onLoad={initialize}
-      />
-      <div className="bg-black">
-        <div className="flex pt-4 gap-1 flex-row items-center justify-center">
-          <Badge color={playerOnline ? "bg-green-600" : "bg-gray-600"}>
-            {playerOnline ? "Online" : "Offline"}
-          </Badge>
-          <Badge>Current State: {playerState}</Badge>
-          {latency && <Badge>Latency: {latency}ms</Badge>}
-          {quality && <Badge>Quality: {quality}</Badge>}
-          {framerate && <Badge>Framerate: {framerate}</Badge>}
+      {!username ? (
+        <div className="flex flex-col items-center justify-center h-screen">
+          <h1 className="text-3xl font-bold mb-4">Enter your username</h1>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              // @ts-ignore
+              setUsername(e.target.username.value);
+            }}>
+            <input
+              type="text"
+              className="p-2 bg-gray-800 text-white"
+              placeholder="Username"
+              name="username"
+            />
+            <button className="p-2 bg-primary text-white mt-4" type="submit">
+              Submit
+            </button>
+          </form>
         </div>
+      ) : (
+        <>
+          <Script
+            src="https://player.live-video.net/1.28.0/amazon-ivs-player.min.js"
+            onLoad={initialize}
+          />
+          <div className="bg-black">
+            <div className="flex pt-4 gap-1 flex-row items-center justify-center">
+              <Badge color={playerOnline ? "bg-green-600" : "bg-gray-600"}>
+                {playerOnline ? "Online" : "Offline"}
+              </Badge>
+              <Badge>Current State: {playerState}</Badge>
+              {latency && <Badge>Latency: {latency}ms</Badge>}
+              {quality && <Badge>Quality: {quality}</Badge>}
+              {framerate && <Badge>Framerate: {framerate}</Badge>}
+              {username && (
+                <Badge color="bg-teal-600">Username: {username}</Badge>
+              )}
+            </div>
 
-        <video
-          ref={videoRef}
-          controls
-          autoPlay
-          playsInline
-          className="w-full h-[90%] left-0 top-16 fixed"
-        />
-        {chatMessages.map((message, i) => (
-          <div className="mb-2" key={i}>
-            <b className="text-primary">{message.username}</b>:{" "}
-            {message.content}
+            <div className="grid grid-cols-[75%_25%] gap-2 items-center justify-center w-full h-[90%] left-0 top-16 fixed">
+              <video
+                ref={videoRef}
+                controls
+                autoPlay
+                playsInline
+                className="w-full"
+              />
+              <div
+                className="flex flex-col max-h-[80%] w-full h-full overflow-y-scroll justify-between relative"
+                ref={chatContainerRef}>
+                <div>
+                  {chatMessages.map((message, i) => (
+                    <div className="mb-2" key={i}>
+                      <b
+                        className={twMerge(
+                          "text-primary",
+                          message.username === username && "text-green-400"
+                        )}>
+                        {message.username}
+                      </b>
+                      : {message.content}
+                    </div>
+                  ))}
+                </div>
+                <form
+                  onSubmit={sendChatMessage}
+                  className="flex flex-col gap-2 w-full">
+                  <input
+                    type="text"
+                    className="p-1 bg-gray-800 text-white"
+                    name="message"
+                    value={textInputValue}
+                    onChange={(e) => setTextInputValue(e.target.value)}
+                  />
+                  <button type="submit">Send</button>
+                </form>
+              </div>
+            </div>
           </div>
-        ))}
-      </div>
+        </>
+      )}
     </>
   );
 }
