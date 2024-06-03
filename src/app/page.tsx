@@ -20,15 +20,15 @@ export default function Home() {
     const ivsPlayer = IVSPlayer.create();
 
     ivsPlayerRef.current = ivsPlayer;
-    ivsPlayer.attachHTMLVideoElement(videoRef.current);
-    ivsPlayer.load(streamUrl);
-    ivsPlayer.play();
 
     // event listeners
     ivsPlayer.addEventListener("Playing", () => {
       const quality = ivsPlayer.getQuality();
+      // TODO in real app, use videojs that lets you set quality more natively
       setQuality(quality.name);
       setFramerate(quality.framerate);
+      // TODO in real app, need to solve the case:
+      // ffmpeg server is not serving (stream isn't live), then it starts playing. videojs should pick up this event and autoplay
       setPlayerState("Playing");
     });
     (["Buffering", "Ended", "Idle", "Ready"] as const).forEach((state) =>
@@ -42,6 +42,9 @@ export default function Home() {
       }
     );
 
+    ivsPlayer.attachHTMLVideoElement(videoRef.current);
+    ivsPlayer.load(streamUrl);
+    ivsPlayer.play();
     setIsInitializeComplete(true);
   };
   const playerOnline = !(playerState === "Ended" || playerState === "Idle");
@@ -63,6 +66,7 @@ export default function Home() {
       clearInterval(intervalId);
     };
   }, [isInitializeComplete]);
+
   useEffect(() => {
     if (playerState === "Ended") {
       console.log("player ended");
